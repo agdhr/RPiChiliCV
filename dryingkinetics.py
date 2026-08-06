@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-import os, cv2, chilicv
+import os
 from scipy.stats import linregress
 """Code for data analysis of chili pepper drying dataset."""
 
@@ -17,12 +17,11 @@ class DryingKinetics:
     def computeMR(self, ds, temp, init_moisture, path):
         # Create a new column with the row-by-row average
         ds['mean'] = ds[['rept_1', 'rept_2', 'rept_3']].mean(axis=1)
-        min_val = ds[['rept_1', 'rept_2', 'rept_3']].min().min()
         # convert time from minutes to hours
         ds["time_hr"] = ds["time"] / 60
         
         # Plot drying time vs mass of dried chili pepper
-        fig = plt.figure(figsize=(6,5))
+        plt.figure(figsize=(6,5))
         plt.scatter(ds["time"], ds["mean"])
         plt.plot(ds["time"], ds["mean"])
         plt.title("Plot of Drying Time vs Weight of Dried Chili Pepper")
@@ -72,7 +71,7 @@ class DryingKinetics:
         ds["M_db3"] = ds["Wm3"]/ds["Ws3"]
 
         # Plot moisture dry basis
-        fig = plt.figure(figsize=(6,5))
+        plt.figure(figsize=(6,5))
         plt.scatter(ds["time"], ds["M_db"])
         plt.plot(ds["time"], ds["M_db"])
         plt.title("Plot of Drying Time vs Moisture Content (dry basis)")
@@ -85,7 +84,7 @@ class DryingKinetics:
         for i in range(1, len(ds-1)):
             ds.loc[i,"dM/dt"] = (ds.loc[i-1, "M_db"]-ds.loc[i, "M_db"])/(ds.loc[i, "time_hr"]-ds.loc[i-1, "time_hr"])
         # Plot Drying Rate vs Moisture Content
-        fig = plt.figure(figsize=(6,5))
+        plt.figure(figsize=(6,5))
         plt.scatter(ds["M_db"][:-1], ds["dM/dt"][:-1])
         plt.plot(ds["M_db"][:-1], ds["dM/dt"][:-1])
         plt.title("Plot of Drying Rate")
@@ -95,8 +94,9 @@ class DryingKinetics:
 
         # Drying Rate (Rc)
         idx_max = ds["dM/dt"].idxmax()    
+        
         # Critical Moisture Content (Xc)
-        M_db_max = ds.loc[idx_max, "M_db"]
+        ds.loc[idx_max, "M_db"]
 
         # Moisture Ratio
         ds["MR_obs"] = ds["M_db"] / ds.loc[0,"M_db"]
@@ -112,7 +112,7 @@ class DryingKinetics:
     def moisture(self, ds, temp, path):
 
         # The models derived from Newton's Law of Cooling
-        def lewis(t, k):                         return np.exp(-k*t)
+        def lewis(t, k):                         		return np.exp(-k*t)
         def page(t, k, n):                              return np.exp(-k*t**n)
         def modified_page(t, k, n):                     return np.exp(-(k*t)**n)
         # The models derived from Fick's Second Law of Diffusion
@@ -130,7 +130,6 @@ class DryingKinetics:
         def jena_das(t, a, k, b, c):                    return a*np.exp(-k*t + b*np.sqrt(t)) + c
         def logistic(t, a, k, b):                       return a/(1 + b * np.exp(k*t))
         # Empirical models
-        # def thompson(MR, a, b):                         return a*np.log(MR) + b*(np.log(MR)**2)
         def wang_singh(t, a, b):                        return 1 + a*t + b*t**2
         def parabolic(t, a, b, c):                      return a - b*t - c*t**2
         def weibull(t, a, b):                           return np.exp(- (t/b)**a)
@@ -200,9 +199,6 @@ class DryingKinetics:
         a_lg, k_lg, b_lg = params_lg; print("Logistic \na =", a_lg, "k =", k_lg, "b =", b_lg)
 
         # Empirical models
-        ## Thompson
-        # params_th, _ = curve_fit(thompson, ds["MR_obs"], ds["time"], p0=(-100,-100))
-        # a, b = params_th; print("Thompson parameters: a =", a, "b =", b)
         ## Weibull
         params_wb, _ = curve_fit(weibull, ds["time"], ds["MR_obs"], p0=(1,100),
                          bounds=([0,0],[np.inf,np.inf]))
@@ -253,11 +249,11 @@ class DryingKinetics:
                 f.write(line + "\n")
 
         # Predictions
-        # Derived from Newton's Law of Cooling
+        ## Derived from Newton's Law of Cooling
         ds["MR_nl"] = lewis(ds["time"], *params_l)
         ds["MR_pg"] = page(ds["time"], *params_pg)
         ds["MR_mp"]= modified_page(ds["time"], *params_mp)
-        # Derived from Fick's Second Law of Diffusion
+        ## Derived from Fick's Second Law of Diffusion
         ds["MR_hp"] = henderson_pabis(ds["time"], *params_hp)
         ds["MR_log"] = logarithmic(ds["time"], *params_log)
         ds["MR_md"] = midilli(ds["time"], *params_md)
@@ -271,9 +267,8 @@ class DryingKinetics:
         ds["MR_jd"] = jena_das(ds["time"], *params_jd)
         ds["MR_mhp"] = modified_henderson_pabis(ds["time"], *params_mhp)
         ds["MR_lg"] = logistic(ds["time"], *params_lg)
-        # Empirical 
+        ## Empirical 
         ds["MR_ws"] = wang_singh(ds["time"], *params_ws)
-        # ds["time_th"] = thompson(ds["MR_obs"], *params_th)
         ds["MR_par"] = parabolic(ds["time"], *params_par)
         ds["MR_wb"] = weibull(ds["time"], *params_wb)
         ds["MR_ag"] = aghbashlo(ds["time"], *params_ag)
@@ -312,7 +307,6 @@ class DryingKinetics:
             "Parabolic": metrics(ds["MR_obs"], ds["MR_par"]),
             "Weibull": metrics(ds["MR_obs"], ds["MR_wb"]),
             "Aghbashlo": metrics(ds["MR_obs"], ds["MR_ag"]),
-            #"Thompson": metrics(ds["time"], ds["time_th"]),
             "Kaleemullah": metrics(ds["MR_obs"], ds["MR_kal"]),
         }
 
@@ -332,29 +326,29 @@ class DryingKinetics:
         plt.figure(figsize=(6,5))
         plt.scatter(ds["time"], ds["MR_obs"], color="black", label="Observed MC (db)", s=25)
         # Plot predictions for each model
-        # plt.plot(ds["time"], ds["MR_nl"], label="Newton-Lewis", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_pg"], label="Page", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_mp"], label="Modified Page", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_nl"], label="Newton-Lewis", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_pg"], label="Page", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_mp"], label="Modified Page", lw = 2.0)
 
-        # plt.plot(ds["time"], ds["MR_hp"], label="Henderson-Pabis", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_hp"], label="Henderson-Pabis", lw = 2.0)
         plt.plot(ds["time"], ds["MR_log"], label="Logarithmic", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_md"], label="Midilli", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_mm"], label="Modified Midilli", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_mmk"], label="Modified Midilli-Kucuk", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_dm"], label="Demir", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_vm"], label="Verma", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_tt"], label="Two-term", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_ttx"], label="Two-term Exponential", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_diffusion"], label="Diffusion", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_mhp"], label="Mod Hend.-Pabis", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_md"], label="Midilli", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_mm"], label="Modified Midilli", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_mmk"], label="Modified Midilli-Kucuk", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_dm"], label="Demir", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_vm"], label="Verma", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_tt"], label="Two-term", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_ttx"], label="Two-term Exponential", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_diffusion"], label="Diffusion", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_mhp"], label="Mod Hend.-Pabis", lw = 2.0)
         plt.plot(ds["time"], ds["MR_jd"], label="Jena-Das", lw = 2.0)
         plt.plot(ds["time"], ds["MR_lg"], label="Logistic", lw = 2.0)
 
-        # plt.plot(ds["time"], ds["MR_par"], label="Parabolic", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_par"], label="Parabolic", lw = 2.0)
         plt.plot(ds["time"], ds["MR_ws"], label="Wang-Singh", lw = 2.0)        
-        # plt.plot(ds["time"], ds["MR_wb"], label="Weibull", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_ag"], label="Aghbashlo", lw = 2.0)
-        # plt.plot(ds["time"], ds["MR_kal"], label="Kaleemullah", lw = 2.0)   
+        plt.plot(ds["time"], ds["MR_wb"], label="Weibull", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_ag"], label="Aghbashlo", lw = 2.0)
+        plt.plot(ds["time"], ds["MR_kal"], label="Kaleemullah", lw = 2.0)   
 
         plt.xlabel("Time (min)", fontsize=11)
         plt.ylabel("Moisture Ratio (MR)", fontsize=11)
@@ -373,11 +367,11 @@ class DryingKinetics:
     
         # Plot data for each temperature with error bar
         if data1 is not None:
-            plt.errorbar(data1['time'], data1['MR_obs'], fmt='o-', label='60°C', color='black', markerfacecolor='white', markersize=6)
+            plt.errorbar(data1['time']/60, data1['MR_obs'], fmt='o-', label='60°C', color='black', markerfacecolor='white', markersize=6)
         if data2 is not None:
-            plt.errorbar(data2['time'], data2['MR_obs'], fmt='s-', label='70°C', color='black', markerfacecolor='white', markersize=6)
+            plt.errorbar(data2['time']/60, data2['MR_obs'], fmt='s-', label='70°C', color='black', markerfacecolor='black', markersize=6)
         if data3 is not None:
-            plt.errorbar(data3['time'], data3['MR_obs'], fmt='^-', label='80°C', color='black', markerfacecolor='white', markersize=6)
+            plt.errorbar(data3['time']/60, data3['MR_obs'], fmt='^-', label='80°C', color='black', markerfacecolor='white', markersize=6)
         # add line at y = 0.05
         plt.axhline(y=0.00, color='black', linestyle='-')
         # Customize the plot
@@ -394,7 +388,7 @@ class DryingKinetics:
         if data1 is not None:
             plt.plot(data1['M_db'], data1['dM/dt'], 'o-', label='60°C', color='black', markerfacecolor='white', markersize=6)
         if data2 is not None:
-            plt.plot(data2['M_db'], data2['dM/dt'], 's-', label='70°C', color='black', markerfacecolor='white', markersize=6)
+            plt.plot(data2['M_db'], data2['dM/dt'], 's-', label='70°C', color='black', markerfacecolor='black', markersize=6)
         if data3 is not None:
             plt.plot(data3['M_db'], data3['dM/dt'], '^-', label='80°C', color='black', markerfacecolor='white', markersize=6)
         # Customize the plot
@@ -409,11 +403,11 @@ class DryingKinetics:
         plt.figure(figsize=(6, 5))
         # Plot data for each temperature
         if data1 is not None:
-            plt.plot(data1['time'], data1['dM/dt'], 'o-', label='60°C', color='black', markerfacecolor='white', markersize=6)
+            plt.plot(data1['time']/60, data1['dM/dt'], 'o-', label='60°C', color='black', markerfacecolor='white', markersize=6)
         if data2 is not None:
-            plt.plot(data2['time'], data2['dM/dt'], 's-', label='70°C', color='black', markerfacecolor='white', markersize=6)
+            plt.plot(data2['time']/60, data2['dM/dt'], 's-', label='70°C', color='black', markerfacecolor='black', markersize=6)
         if data3 is not None:
-            plt.plot(data3['time'], data3['dM/dt'], '^-', label='80°C', color='black', markerfacecolor='white', markersize=6)
+            plt.plot(data3['time']/60, data3['dM/dt'], '^-', label='80°C', color='black', markerfacecolor='white', markersize=6)
         # Customize the plot
         plt.xlabel('Time (min)', fontsize=12)
         plt.ylabel('Drying Rate (g water/g dry/hour)', fontsize=12)
@@ -471,16 +465,13 @@ class DryingKinetics:
         slope70_3, _, _, _, _ = linregress(t70_3, lnMR70_3)
         slope80_3, _, _, _, _ = linregress(t80_3, lnMR80_3)
 
-        k60, k70, k80 = -slope60, -slope70, -slope80
+        #k60, k70, k80 = -slope60, -slope70, -slope80
         k60_1, k70_1, k80_1 = -slope60_1, -slope70_1, -slope80_1
         k60_2, k70_2, k80_2 = -slope60_2, -slope70_2, -slope80_2
         k60_3, k70_3, k80_3 = -slope60_3, -slope70_3, -slope80_3
         
         # Calculate effective diffusion coefficients (Deff), mean
         H = 1.19
-        Deff60 = (k60 * (H)**2) / (np.pi**2)
-        Deff70 = (k70 * (H)**2) / (np.pi**2)
-        Deff80 = (k80 * (H)**2) / (np.pi**2)
         # Calculate effective diffusion coefficients (Deff), rept_1
         Deff60_1 = (k60_1 * (H)**2) / (np.pi**2)
         Deff70_1 = (k70_1 * (H)**2) / (np.pi**2)
@@ -539,6 +530,7 @@ class DryingKinetics:
         Delta_H60 = (Ea_kj - (R * (T[0] + 273.15))/1000)
         Delta_H70 = (Ea_kj - (R * (T[1] + 273.15))/1000)
         Delta_H80 = (Ea_kj - (R * (T[2] + 273.15))/1000)
+        
         # Change in Entropy, ∆S=R (ln(D_0 )-ln(k_B/h_P )-ln(T+273.15)), in kJ/mol/T
         k_B = 1.381e-23 # Boltzmann constant (J/K)
         h_P = 6.626e-34 # Planck constant (J·s)
@@ -546,6 +538,7 @@ class DryingKinetics:
         Delta_S60 = (R * (np.log(Do) - np.log(kb_hp) - np.log(T[0] + 273.15)))/1000
         Delta_S70 = (R * (np.log(Do) - np.log(kb_hp) - np.log(T[1] + 273.15)))/1000
         Delta_S80 = (R * (np.log(Do) - np.log(kb_hp) - np.log(T[2] + 273.15)))/1000
+        
         # Change in Gibbs Free Energy, ∆G=∆H-T∆S, in kJ/mol
         Delta_G60 = Delta_H60 - (T[0] + 273.15) * Delta_S60
         Delta_G70 = Delta_H70 - (T[1] + 273.15) * Delta_S70
@@ -600,10 +593,10 @@ class DryingKinetics:
     def plot_color(self, df1, df2, df3, output_path):
         # Plot L vs Time
         plt.figure(figsize=(5,5))
-        plt.scatter(df1['time'], df1['L'], marker='o', linestyle='-', label='60°C', color='black', facecolors='white', s=36)
-        plt.scatter(df2['time'], df2['L'], marker='s', linestyle='-', label='70°C', color='black', facecolors='black', s=36)
-        plt.scatter(df3['time'], df3['L'], marker='^', linestyle='-', label='80°C', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1['time']/60, df1['L'], marker='o', linestyle='-', label='60°C', color='black', facecolors='white', s=36)
+        plt.scatter(df2['time']/60, df2['L'], marker='s', linestyle='-', label='70°C', color='black', facecolors='black', s=36)
+        plt.scatter(df3['time']/60, df3['L'], marker='^', linestyle='-', label='80°C', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("L*", fontsize=12)
         # plt.title("L vs Time", fontsize=12)
         plt.legend(fontsize=10)
@@ -613,23 +606,23 @@ class DryingKinetics:
 
         # Plot a* vs Time
         plt.figure(figsize=(5,5))
-        plt.scatter(df1['time'], df1['a'], marker='o', linestyle='-', label='60°C', color='black', facecolors='white', s=36)
-        plt.scatter(df2['time'], df2['a'], marker='s', linestyle='-', label='70°C', color='black', facecolors='black', s=36)
-        plt.scatter(df3['time'], df3['a'], marker='^', linestyle='-', label='80°C', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1['time']/60, df1['a'], marker='o', linestyle='-', label='60°C', color='black', facecolors='white', s=36)
+        plt.scatter(df2['time']/60, df2['a'], marker='s', linestyle='-', label='70°C', color='black', facecolors='black', s=36)
+        plt.scatter(df3['time']/60, df3['a'], marker='^', linestyle='-', label='80°C', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("a*")
         # plt.title("a* vs Time", fontsize=12)
         plt.legend(fontsize=10)
         plt.grid(True, linestyle='--', alpha=0.6)
         plt.savefig(os.path.join(output_path, "color_a_vs_Time.png"), dpi=300)
         plt.close()
-    
+
         # Plot b* vs Time
         plt.figure(figsize=(5,5))
-        plt.scatter(df1['time'], df1['b'], marker='o', linestyle='-', label='60°C', color='black', facecolors='white', s=36)
-        plt.scatter(df2['time'], df2['b'], marker='s', linestyle='-', label='70°C', color='black', facecolors='black', s=36)
-        plt.scatter(df3['time'], df3['b'], marker='^', linestyle='-', label='80°C', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1['time']/60, df1['b'], marker='o', linestyle='-', label='60°C', color='black', facecolors='white', s=36)
+        plt.scatter(df2['time']/60, df2['b'], marker='s', linestyle='-', label='70°C', color='black', facecolors='black', s=36)
+        plt.scatter(df3['time']/60, df3['b'], marker='^', linestyle='-', label='80°C', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("b*")
         # plt.title("b* vs Time", fontsize=12)
         plt.legend(fontsize=10)
@@ -648,10 +641,10 @@ class DryingKinetics:
         
         # plot ΔEab
         plt.figure(figsize=(5,5))
-        plt.scatter(df1["time"], df1["deltaE"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
-        plt.scatter(df2["time"], df2["deltaE"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
-        plt.scatter(df3["time"], df3["deltaE"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1["time"]/60, df1["deltaE"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
+        plt.scatter(df2["time"]/60, df2["deltaE"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
+        plt.scatter(df3["time"]/60, df3["deltaE"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("ΔE", fontsize=12)
         # plt.title("Colour Difference (ΔEab) at Different Temperatures", fontsize=12)
         plt.legend()
@@ -670,10 +663,10 @@ class DryingKinetics:
         
         # plot C
         plt.figure(figsize=(5,5))
-        plt.scatter(df1["time"], df1["C"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
-        plt.scatter(df2["time"], df2["C"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
-        plt.scatter(df3["time"], df3["C"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1["time"]/60, df1["C"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
+        plt.scatter(df2["time"]/60, df2["C"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
+        plt.scatter(df3["time"]/60, df3["C"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("C*", fontsize=12)
         # plt.title("Chroma (C*) at Different Temperatures", fontsize=12)
         plt.legend()
@@ -692,10 +685,10 @@ class DryingKinetics:
 
         # Plot hue
         plt.figure(figsize=(5,5))
-        plt.scatter(df1["time"], df1["h"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
-        plt.scatter(df2["time"], df2["h"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
-        plt.scatter(df3["time"], df3["h"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1["time"]/60, df1["h"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
+        plt.scatter(df2["time"]/60, df2["h"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
+        plt.scatter(df3["time"]/60, df3["h"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("h", fontsize=12)
         # plt.title("Hue (h) at Different Temperatures", fontsize=12)
         plt.legend()
@@ -714,10 +707,10 @@ class DryingKinetics:
         
         # Plot ΔC
         plt.figure(figsize=(5,5))
-        plt.scatter(df1["time"], df1["deltaC"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
-        plt.scatter(df2["time"], df2["deltaC"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
-        plt.scatter(df3["time"], df3["deltaC"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1["time"]/60, df1["deltaC"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
+        plt.scatter(df2["time"]/60, df2["deltaC"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
+        plt.scatter(df3["time"]/60, df3["deltaC"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("ΔC*", fontsize=12)
         # plt.title("Total Saturation Difference (ΔC) at Different Temperatures", fontsize=12)
         plt.legend()
@@ -740,10 +733,10 @@ class DryingKinetics:
         
         # Plot Δh
         plt.figure(figsize=(5,5))
-        plt.scatter(df1["time"], df1["deltaH"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
-        plt.scatter(df2["time"], df2["deltaH"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
-        plt.scatter(df3["time"], df3["deltaH"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1["time"]/60, df1["deltaH"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
+        plt.scatter(df2["time"]/60, df2["deltaH"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
+        plt.scatter(df3["time"]/60, df3["deltaH"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("Δh", fontsize=12)
         # plt.title("Total Hue Difference (Δh) at Different Temperatures", fontsize=12)
         plt.legend()
@@ -765,10 +758,10 @@ class DryingKinetics:
         
         # Plot BI
         plt.figure(figsize=(5,5))
-        plt.scatter(df1["time"], df1["BI"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
-        plt.scatter(df2["time"], df2["BI"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
-        plt.scatter(df3["time"], df3["BI"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1["time"]/60, df1["BI"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
+        plt.scatter(df2["time"]/60, df2["BI"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
+        plt.scatter(df3["time"]/60, df3["BI"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("BI", fontsize=12)
         # plt.title("Browning Index (BI) at Different Temperatures", fontsize=12)
         plt.legend()
@@ -787,10 +780,10 @@ class DryingKinetics:
         
         # Plot RI
         plt.figure(figsize=(5,5))
-        plt.scatter(df1["time"], df1["RI"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
-        plt.scatter(df2["time"], df2["RI"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
-        plt.scatter(df3["time"], df3["RI"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1["time"]/60, df1["RI"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
+        plt.scatter(df2["time"]/60, df2["RI"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
+        plt.scatter(df3["time"]/60, df3["RI"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("RI", fontsize=12)
         # plt.title("Redness Index (RI) at Different Temperatures", fontsize=12)
         plt.legend()
@@ -809,10 +802,10 @@ class DryingKinetics:
         
         # Plot YI
         plt.figure(figsize=(5,5))
-        plt.scatter(df1["time"], df1["YI"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
-        plt.scatter(df2["time"], df2["YI"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
-        plt.scatter(df3["time"], df3["YI"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
-        plt.xlabel("Time (min)", fontsize=12)
+        plt.scatter(df1["time"]/60, df1["YI"], label="60°C", marker='o', linestyle='-', color='black', facecolors='white', s=36)
+        plt.scatter(df2["time"]/60, df2["YI"], label="70°C", marker='s', linestyle='-', color='black', facecolors='black', s=36)
+        plt.scatter(df3["time"]/60, df3["YI"], label="80°C", marker='^', linestyle='-', color='black', facecolors='white', s=36)
+        plt.xlabel("Time (h)", fontsize=12)
         plt.ylabel("YI", fontsize=12)
         # plt.title("Yellownes Index (YI) at Different Temperatures", fontsize=12)
         plt.legend()
@@ -988,13 +981,13 @@ class DryingKinetics:
 if __name__ == "__main__":   
 
     """IDENTIFY SAMPLES, INITIAL MOISTURE AND TEMPERATURE"""
-    sample = 'cmb';  temp_exp = 80;  init_moisture = 0.86611
+    sample = 'cmb';  temp_exp = 60;  init_moisture = 0.86611
     dataset = f"d://z/master/RaspberryPi/program/dataset/"
     
     """RUN PROGRAM"""
     model = DryingKinetics()
 
-    """KINETICS ON MOISTURE LOSS""" 
+    # """KINETICS ON MOISTURE LOSS""" 
     # input_moisture = dataset + f"moisture/{sample}_{temp_exp}_MCLoss.csv"
     # output_moisture = dataset + f"moisture/{sample}_{temp_exp}_MR.csv"
 
@@ -1002,7 +995,7 @@ if __name__ == "__main__":
     # ds_MR = model.computeMR(ds_MR, temp_exp, init_moisture, output_moisture)
     # ds_MR = model.moisture(ds_MR, temp_exp, output_moisture)
 
-    """PLOT MOISTURE RATIO AND DRYING RATE AT EACH TEMPERATURE"""
+    # """PLOT MOISTURE RATIO AND DRYING RATE AT EACH TEMPERATURE"""
     # ds_60 = model.load_data(f"{dataset}moisture/cmb_60_MR.csv_updated.csv")
     # ds_70 = model.load_data(f"{dataset}moisture/cmb_70_MR.csv_updated.csv")
     # ds_80 = model.load_data(f"{dataset}moisture/cmb_80_MR.csv_updated.csv")
@@ -1021,26 +1014,26 @@ if __name__ == "__main__":
     # df_color = model.average_Lab(input_color, output_color)
 
     """PLOT CIELab VALUES"""
-    # ds_60 = model.load_data(f"{dataset}color/cmb_60_color_.csv")
-    # ds_70 = model.load_data(f"{dataset}color/cmb_70_color_.csv")
-    # ds_80 = model.load_data(f"{dataset}color/cmb_80_color_.csv")
-    # out_path = f"{dataset}color/"
-    # df_60, df_70, df_80 = model.plot_color(ds_60, ds_70, ds_80, out_path)
+    ds_60 = model.load_data(f"{dataset}color/cmb_60_color_.csv")
+    ds_70 = model.load_data(f"{dataset}color/cmb_70_color_.csv")
+    ds_80 = model.load_data(f"{dataset}color/cmb_80_color_.csv")
+    out_path = f"{dataset}color/"
+    df_60, df_70, df_80 = model.plot_color(ds_60, ds_70, ds_80, out_path)
 
     """KINETICS ON COLOR DEGRADATION"""
-    input_Lab = dataset + f"color/color_{temp_exp}C_updated.csv"
-    output_Lab = dataset + f"color/"
-    ds_color = model.load_data(input_Lab)
-    ds_color = model.color(ds_color, temp_exp, output_Lab, col='L')
-    ds_color = model.color(ds_color, temp_exp, output_Lab, col='a')
-    ds_color = model.color(ds_color, temp_exp, output_Lab, col='b')
-    # ds_color = model.color(ds_color, temp_exp, output_Lab, col="deltaE")
-    ds_color = model.color(ds_color, temp_exp, output_Lab, col='C')
-    # ds_color = model.color(ds_color, temp_exp, output_Lab, col='h')
-    # ds_color = model.color(ds_color, temp_exp, output_Lab, col="deltaC")
-    # ds_color = model.color(ds_color, temp_exp, output_Lab, col="deltaH") 
-    ds_color = model.color(ds_color, temp_exp, output_Lab, col='BI')
-    ds_color = model.color(ds_color, temp_exp, output_Lab, col='YI')
+    # input_Lab = dataset + f"color/color_{temp_exp}C_updated.csv"
+    # output_Lab = dataset + f"color/"
+    # ds_color = model.load_data(input_Lab)
+    # ds_color = model.color(ds_color, temp_exp, output_Lab, col='L')
+    # ds_color = model.color(ds_color, temp_exp, output_Lab, col='a')
+    # ds_color = model.color(ds_color, temp_exp, output_Lab, col='b')
+    # # ds_color = model.color(ds_color, temp_exp, output_Lab, col="deltaE")
+    # ds_color = model.color(ds_color, temp_exp, output_Lab, col='C')
+    # # ds_color = model.color(ds_color, temp_exp, output_Lab, col='h')
+    # # ds_color = model.color(ds_color, temp_exp, output_Lab, col="deltaC")
+    # # ds_color = model.color(ds_color, temp_exp, output_Lab, col="deltaH") 
+    # ds_color = model.color(ds_color, temp_exp, output_Lab, col='BI')
+    # ds_color = model.color(ds_color, temp_exp, output_Lab, col='YI')
 
     # # input_k = dataset + f"color/cmb_k.csv"
     # # read_k = pd.read_csv(input_k)
