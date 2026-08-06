@@ -1,1 +1,1 @@
-Drying kinetics on moisture loss and colod degradation
+Drying kinetics on moisture loss and color degradation
