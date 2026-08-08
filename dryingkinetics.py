@@ -165,8 +165,8 @@ class DryingKinetics:
                          bounds=([0,0,0,0],[np.inf,np.inf,5,1]))
         a_mm, k_mm, n_mm, b_mm = params_mm; print("Modified Midilli \na =", a_mm, "k =", k_mm, "n =", n_mm, "b =", b_mm)
         ## Modified Midilli-Kucuk
-        params_mmk, _ = curve_fit(modified_midilli_kucuk, ds["time"], ds["MR_obs"], p0=(1,0.001,1,1e-5),
-                         bounds=([0,0,0,0],[np.inf,np.inf,5,1]))
+        params_mmk, _ = curve_fit(modified_midilli_kucuk, ds["time"], ds["MR_obs"], p0=(0,0.001,1,1e-5),
+                         bounds=([0,0,0,0],[np.inf,np.inf,np.inf,np.inf]))
         k_mmk, a_mmk, b_mmk, n_mmk = params_mmk; print("Modified Midilli-Kucuk \nk =", k_mmk, "a =", a_mmk, "b =", b_mmk, "n =", n_mmk)
         ## Demir
         params_dm, _ = curve_fit(demir, ds["time"], ds["MR_obs"], p0=(0.001,1,1,1),
@@ -194,7 +194,7 @@ class DryingKinetics:
                           bounds=([0,0,0,0,0],[1,np.inf,np.inf,1,np.inf]), maxfev = 10000)
         a_mhp, k_mhp, g_mhp, c_mhp, h_mhp = params_mhp; print("Modified Henderson-Pabis \na =", a_mhp, "k =", k_mhp, "g =", g_mhp, "c =", c_mhp, "h =", h_mhp)
         ## Logistic
-        params_lg, _ = curve_fit(logistic, ds["time"], ds["MR_obs"], p0=(1,0.001,1e-5),
+        params_lg, _ = curve_fit(logistic, ds["time"], ds["MR_obs"], p0=(0,0.001,1e-5),
                          bounds=([0,0,0],[np.inf,np.inf,np.inf]))
         a_lg, k_lg, b_lg = params_lg; print("Logistic \na =", a_lg, "k =", k_lg, "b =", b_lg)
 
@@ -988,12 +988,12 @@ if __name__ == "__main__":
     model = DryingKinetics()
 
     # """KINETICS ON MOISTURE LOSS""" 
-    # input_moisture = dataset + f"moisture/{sample}_{temp_exp}_MCLoss.csv"
-    # output_moisture = dataset + f"moisture/{sample}_{temp_exp}_MR.csv"
+    input_moisture = dataset + f"moisture/{sample}_{temp_exp}_MCLoss.csv"
+    output_moisture = dataset + f"moisture/{sample}_{temp_exp}_MR.csv"
 
-    # ds_MR = model.load_data(input_moisture)
-    # ds_MR = model.computeMR(ds_MR, temp_exp, init_moisture, output_moisture)
-    # ds_MR = model.moisture(ds_MR, temp_exp, output_moisture)
+    ds_MR = model.load_data(input_moisture)
+    ds_MR = model.computeMR(ds_MR, temp_exp, init_moisture, output_moisture)
+    ds_MR = model.moisture(ds_MR, temp_exp, output_moisture)
 
     # """PLOT MOISTURE RATIO AND DRYING RATE AT EACH TEMPERATURE"""
     # ds_60 = model.load_data(f"{dataset}moisture/cmb_60_MR.csv_updated.csv")
@@ -1014,11 +1014,11 @@ if __name__ == "__main__":
     # df_color = model.average_Lab(input_color, output_color)
 
     """PLOT CIELab VALUES"""
-    ds_60 = model.load_data(f"{dataset}color/cmb_60_color_.csv")
-    ds_70 = model.load_data(f"{dataset}color/cmb_70_color_.csv")
-    ds_80 = model.load_data(f"{dataset}color/cmb_80_color_.csv")
-    out_path = f"{dataset}color/"
-    df_60, df_70, df_80 = model.plot_color(ds_60, ds_70, ds_80, out_path)
+    # ds_60 = model.load_data(f"{dataset}color/cmb_60_color_.csv")
+    # ds_70 = model.load_data(f"{dataset}color/cmb_70_color_.csv")
+    # ds_80 = model.load_data(f"{dataset}color/cmb_80_color_.csv")
+    # out_path = f"{dataset}color/"
+    # df_60, df_70, df_80 = model.plot_color(ds_60, ds_70, ds_80, out_path)
 
     """KINETICS ON COLOR DEGRADATION"""
     # input_Lab = dataset + f"color/color_{temp_exp}C_updated.csv"
